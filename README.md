@@ -8,7 +8,7 @@ A professional trading dashboard combining Bitcoin price action with key macroec
 
 ## Screenshot
 
-![Crypto Macro Dashboard](images/macro-dashboard.png)
+![Crypto Macro Dashboard](images/macro-dashboard2.png)
 
 ## Features
 

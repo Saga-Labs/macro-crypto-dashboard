@@ -147,8 +147,8 @@
     </header>
 
     <main class="max-w-6xl mx-auto space-y-6">
-        <!-- Row 1: Bitcoin Price + Global M2 vs Bitcoin YoY + Inverted DXY vs Bitcoin 3M -->
-        <div class="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <!-- Row 1: Bitcoin Price + Global M2 vs Bitcoin YoY -->
+        <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
             <!-- Bitcoin Price Chart -->
             <section class="bg-white dark:bg-slate-800 rounded-2xl shadow p-3">
                 <h2 class="text-base font-medium mb-2 text-slate-900 dark:text-white">Bitcoin Price (USD)</h2>
@@ -172,20 +172,19 @@
             </section>
         </div>
 
-            <!-- Inverted DXY vs Bitcoin 3m Change -->
-            <section class="bg-white dark:bg-slate-800 rounded-2xl shadow p-3">
-                <h2 class="text-base font-medium mb-2 text-slate-900 dark:text-white">DXY vs Bitcoin 3M</h2>
-                <div class="h-48 mb-2">
-                    <canvas id="dxyBitcoinChart"></canvas>
-                </div>
-                <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                    <p><strong>Key insight:</strong> Dollar weakness precedes Bitcoin rallies by ~3 months. Leading indicator for timing.</p>
-                </div>
-            </section>
-        </div>
+        <!-- DXY vs Bitcoin 3M (Full Width) -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl shadow p-3">
+            <h2 class="text-base font-medium mb-2 text-slate-900 dark:text-white">DXY vs Bitcoin 3M</h2>
+            <div class="h-48 mb-2">
+                <canvas id="dxyBitcoinChart"></canvas>
+            </div>
+            <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                <p><strong>Key insight:</strong> Dollar weakness precedes Bitcoin rallies by ~3 months. Leading indicator for timing.</p>
+            </div>
+        </section>
 
-        <!-- Row 2: Industrial Production + NFCI + M2 -->
-        <div class="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <!-- Row 2: Industrial Production + NFCI -->
+        <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
             <!-- Industrial Production -->
             <section class="bg-white dark:bg-slate-800 rounded-2xl shadow p-3">
                 <h2 class="text-base font-medium mb-2 text-slate-900 dark:text-white">Industrial Production</h2>
@@ -207,6 +206,10 @@
                 </div>
             </section>
 
+        </div>
+
+        <!-- Row 3: M2 Money Supply + Treasury Account -->
+        <div class="grid gap-4 grid-cols-1 md:grid-cols-2">
             <!-- M2 -->
             <section class="bg-white dark:bg-slate-800 rounded-2xl shadow p-3">
                 <h2 class="text-base font-medium mb-2 text-slate-900 dark:text-white">M2 Money Supply</h2>
@@ -217,10 +220,7 @@
                     <p><strong>Key insight:</strong> Rapid M2 growth drives crypto adoption. Contractions hurt crypto as liquidity dries up.</p>
                 </div>
             </section>
-        </div>
 
-        <!-- Row 3: TGA (single chart in last row) -->
-        <div class="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
             <!-- TGA -->
             <section class="bg-white dark:bg-slate-800 rounded-2xl shadow p-3">
                 <h2 class="text-base font-medium mb-2 text-slate-900 dark:text-white">Treasury Account</h2>
