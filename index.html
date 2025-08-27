@@ -668,15 +668,39 @@
         window.testAPIs = testAPIs;
 
         function createChart(canvasId, data, label, color) {
-            // Restore canvas element if it was replaced by loading/error state
-            const container = document.getElementById(canvasId)?.parentElement;
-            if (container && !document.getElementById(canvasId)) {
-                container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+            // Store reference to container for this canvas
+            const chartContainers = {
+                'bitcoinChart': 'Bitcoin Price (USD)',
+                'm2BitcoinChart': 'M2 vs Bitcoin YoY', 
+                'dxyBitcoinChart': 'DXY vs Bitcoin 3M',
+                'pmiChart': 'Industrial Production',
+                'nfciChart': 'Financial Conditions',
+                'm2Chart': 'M2 Money Supply',
+                'tgaChart': 'Treasury Account'
+            };
+            
+            // Find the canvas or restore it if it was replaced by loading/error state
+            let canvas = document.getElementById(canvasId);
+            
+            if (!canvas) {
+                // Find the section with the matching title and restore the canvas
+                const sections = document.querySelectorAll('section');
+                for (const section of sections) {
+                    const title = section.querySelector('h2');
+                    if (title && title.textContent.includes(chartContainers[canvasId])) {
+                        const container = section.querySelector('.h-48.mb-2');
+                        if (container) {
+                            container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+                            canvas = document.getElementById(canvasId);
+                            console.log(`✅ Restored canvas: ${canvasId}`);
+                            break;
+                        }
+                    }
+                }
             }
             
-            const canvas = document.getElementById(canvasId);
             if (!canvas) {
-                console.error(`Canvas ${canvasId} not found`);
+                console.error(`❌ Canvas ${canvasId} not found and could not be restored`);
                 return;
             }
             
@@ -819,15 +843,39 @@
         }
 
         function createDualAxisChart(canvasId, data1, data2, label1, label2, color1, color2) {
-            // Restore canvas element if it was replaced by loading/error state
-            const container = document.getElementById(canvasId)?.parentElement;
-            if (container && !document.getElementById(canvasId)) {
-                container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+            // Store reference to container for this canvas
+            const chartContainers = {
+                'bitcoinChart': 'Bitcoin Price (USD)',
+                'm2BitcoinChart': 'M2 vs Bitcoin YoY', 
+                'dxyBitcoinChart': 'DXY vs Bitcoin 3M',
+                'pmiChart': 'Industrial Production',
+                'nfciChart': 'Financial Conditions',
+                'm2Chart': 'M2 Money Supply',
+                'tgaChart': 'Treasury Account'
+            };
+            
+            // Find the canvas or restore it if it was replaced by loading/error state
+            let canvas = document.getElementById(canvasId);
+            
+            if (!canvas) {
+                // Find the section with the matching title and restore the canvas
+                const sections = document.querySelectorAll('section');
+                for (const section of sections) {
+                    const title = section.querySelector('h2');
+                    if (title && title.textContent.includes(chartContainers[canvasId])) {
+                        const container = section.querySelector('.h-48.mb-2');
+                        if (container) {
+                            container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+                            canvas = document.getElementById(canvasId);
+                            console.log(`✅ Restored dual-axis canvas: ${canvasId}`);
+                            break;
+                        }
+                    }
+                }
             }
             
-            const canvas = document.getElementById(canvasId);
             if (!canvas) {
-                console.error(`Canvas ${canvasId} not found`);
+                console.error(`❌ Canvas ${canvasId} not found and could not be restored`);
                 return;
             }
             
