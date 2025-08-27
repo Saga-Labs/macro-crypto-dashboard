@@ -225,6 +225,7 @@
         let chartInstances = {};
         let chartData = {};
         let retryCount = {}; // Track retry attempts per chart
+        let dataCache = {}; // Cache successful API responses
         let settings = {
             dataPoints: 90, // 3 months of data (approximately)
             chartType: 'line',
@@ -314,15 +315,22 @@
         }
 
         async function fetchFRED(seriesId) {
+            // Check cache first (5 minute cache)
+            const cacheKey = `fred_${seriesId}`;
+            const cached = dataCache[cacheKey];
+            if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+                console.log(`📋 Using cached data for ${seriesId}`);
+                return cached.data;
+            }
+            
             console.log(`🔍 Fetching FRED series: ${seriesId}`);
             
-            // Try multiple approaches for FRED data with better error handling
+            // Optimized approach - try fastest proxy first with reduced data limit
             const approaches = [
-                // Approach 1: AllOrigins (most reliable)
+                // Approach 1: AllOrigins (most reliable) - reduced data for speed
                 async () => {
                     const proxyUrl = 'https://api.allorigins.win/get?url=';
-                    const fredUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_API_KEY}&file_type=json&limit=300&sort_order=desc`;
-                    console.log(`📡 Trying AllOrigins for ${seriesId}...`);
+                    const fredUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_API_KEY}&file_type=json&limit=120&sort_order=desc`;
                     
                     const response = await fetch(proxyUrl + encodeURIComponent(fredUrl), {
                         method: 'GET',
@@ -339,7 +347,6 @@
                     }
                     
                     const data = JSON.parse(proxyData.contents);
-                    console.log(`📊 AllOrigins response for ${seriesId}:`, data.observations?.length || 0, 'observations');
                     return data;
                 },
                 
@@ -416,6 +423,12 @@
                     console.log(`📅 Date range: ${validData[0].date} to ${validData[validData.length - 1].date}`);
                     console.log(`📊 Value range: ${Math.min(...validData.map(d => d.value)).toFixed(2)} to ${Math.max(...validData.map(d => d.value)).toFixed(2)}`);
                     
+                    // Cache the successful result
+                    dataCache[cacheKey] = {
+                        data: validData,
+                        timestamp: Date.now()
+                    };
+                    
                     return validData;
 
                 } catch (error) {
@@ -433,6 +446,14 @@
         }
 
         async function fetchBitcoinPrice() {
+            // Check cache first (2 minute cache for Bitcoin)
+            const cacheKey = 'bitcoin_price';
+            const cached = dataCache[cacheKey];
+            if (cached && Date.now() - cached.timestamp < 2 * 60 * 1000) {
+                console.log(`📋 Using cached Bitcoin data`);
+                return cached.data;
+            }
+            
             const apis = [
                 {
                     name: 'CoinGecko',
@@ -483,6 +504,13 @@
                         .slice(-Math.max(settings.dataPoints, 120));
 
                     console.log(`✅ Successfully fetched Bitcoin from ${api.name}: ${sortedData.length} data points`);
+                    
+                    // Cache the successful result
+                    dataCache[cacheKey] = {
+                        data: sortedData,
+                        timestamp: Date.now()
+                    };
+                    
                     return sortedData;
 
                 } catch (error) {
@@ -624,8 +652,8 @@
                     console.log(`❌ Attempt ${attempt + 1}/${maxRetries} failed for ${chartId}:`, error.message);
                     
                     if (attempt < maxRetries - 1) {
-                        // Wait before retry (exponential backoff)
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                        // Reduced wait time for faster retries (500ms, 1s, 1.5s)
+                        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
                     } else {
                         // Final attempt failed
                         retryCount[chartId] = maxRetries;
@@ -1052,16 +1080,19 @@
             try {
                 console.log('Starting data fetch from real APIs...');
 
-                // Fetch Bitcoin data first (most reliable) with retry logic
-                try {
-                    statusEl.innerHTML = `<p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">Fetching Bitcoin price data...</p>`;
-                    dataResults.bitcoin = await loadDataWithRetry('bitcoinChart', fetchBitcoinPrice);
-                    realDataCount++;
-                    console.log('✅ Bitcoin data loaded successfully');
-                } catch (error) {
-                    errors.push(`Bitcoin: ${error.message}`);
-                    console.error('❌ Bitcoin data failed after retries:', error);
-                }
+                // Fetch Bitcoin data with retry logic (parallel)
+                const bitcoinPromise = loadDataWithRetry('bitcoinChart', fetchBitcoinPrice)
+                    .then(data => {
+                        dataResults.bitcoin = data;
+                        realDataCount++;
+                        console.log('✅ Bitcoin data loaded successfully');
+                        return { success: true };
+                    })
+                    .catch(error => {
+                        errors.push(`Bitcoin: ${error.message}`);
+                        console.error('❌ Bitcoin data failed after retries:', error);
+                        return { success: false };
+                    });
 
                 // Fetch FRED data series with timeout and retry
                 const fredSeries = [
@@ -1085,11 +1116,10 @@
                     const chartId = chartIdMap[series.key];
                     
                     try {
-                        statusEl.innerHTML = `<p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">Fetching ${series.name}...</p>`;
                         
                         const data = await loadDataWithRetry(chartId, () => {
                             const timeoutPromise = new Promise((_, reject) => 
-                                setTimeout(() => reject(new Error('Timeout')), 10000)
+                                setTimeout(() => reject(new Error('Timeout')), 5000)
                             );
                             const dataPromise = fetchFRED(series.id);
                             return Promise.race([dataPromise, timeoutPromise]);
@@ -1104,7 +1134,11 @@
                     }
                 });
 
-                const fredResults = await Promise.all(fredPromises);
+                // Wait for both Bitcoin and FRED data in parallel
+                const [bitcoinResult, fredResults] = await Promise.all([
+                    bitcoinPromise,
+                    Promise.all(fredPromises)
+                ]);
                 
                 fredResults.forEach(result => {
                     if (result.success && result.data) {
