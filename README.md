@@ -6,16 +6,9 @@ A professional trading dashboard combining Bitcoin price action with key macroec
 
 **[View Dashboard](https://saga-labs.github.io/macro-dashboard/)**
 
-## Screenshots
+## Screenshot
 
-### Light Mode
-![Dashboard Light Mode](images/dashboard-light.png)
-
-### Dark Mode  
-![Dashboard Dark Mode](images/dashboard-dark.png)
-
-### Mobile View
-![Mobile Dashboard](images/dashboard-mobile.png)
+![Crypto Macro Dashboard](images/macro-dashboard.png)
 
 ## Features
 
