@@ -4,7 +4,7 @@ A professional trading dashboard combining Bitcoin price action with key macroec
 
 ## 🚀 Live Demo
 
-**[View Dashboard](https://saga-labs.github.io/macro-dashboard/)**
+**[View Dashboard](https://saga-labs.github.io/macro-crypto-dashboard/)**
 
 ## Screenshot
 
@@ -39,7 +39,7 @@ A professional trading dashboard combining Bitcoin price action with key macroec
 
 ```bash
 # Clone the repo
-git clone https://github.com/Saga-Labs/macro-dashboard.git
+git clone https://github.com/Saga-Labs/macro-crypto-dashboard.git
 
 # Open in browser
 open index.html
