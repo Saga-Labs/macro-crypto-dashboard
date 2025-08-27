@@ -224,6 +224,7 @@
         const FRED_API_KEY = "beee1466f76464d05ca4d42d26e0302c";
         let chartInstances = {};
         let chartData = {};
+        let retryCount = {}; // Track retry attempts per chart
         let settings = {
             dataPoints: 90, // 3 months of data (approximately)
             chartType: 'line',
@@ -531,24 +532,45 @@
             return result;
         }
 
-        function showDataError(chartId, errorMessage) {
+        // Loading animation for individual charts
+        function showChartLoading(chartId) {
             const canvas = document.getElementById(chartId);
             if (!canvas) return;
             
             const container = canvas.parentElement;
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            container.innerHTML = `
+                <div class="h-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'} rounded-lg">
+                    <div class="text-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'} mx-auto mb-2"></div>
+                        <div class="${isDark ? 'text-slate-300' : 'text-slate-600'} text-sm">Loading data...</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showDataError(chartId, errorMessage, retryCount = 0) {
+            const canvas = document.getElementById(chartId);
+            if (!canvas) return;
+            
+            const container = canvas.parentElement;
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            // Only show error after 3 failed attempts
+            if (retryCount < 3) {
+                return;
+            }
             
             // Replace canvas with error message
             container.innerHTML = `
-                <div class="h-full flex items-center justify-center bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg">
+                <div class="h-full flex items-center justify-center ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} border-2 rounded-lg">
                     <div class="text-center p-4">
-                        <div class="text-red-600 dark:text-red-400 text-lg font-medium mb-2">❌ Real Data Unavailable</div>
-                        <div class="text-red-500 dark:text-red-300 text-sm mb-3">${errorMessage}</div>
+                        <div class="${isDark ? 'text-red-400' : 'text-red-600'} text-lg font-medium mb-2">❌ Data Unavailable</div>
+                        <div class="${isDark ? 'text-red-300' : 'text-red-500'} text-sm mb-3">${errorMessage}</div>
                         <div class="space-y-2">
-                            <button onclick="loadData()" class="block w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm">
-                                🔄 Retry All Data
-                            </button>
-                            <button onclick="testAPIs()" class="block w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm">
-                                🔍 Test APIs
+                            <button onclick="retryChart('${chartId}')" class="block w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm">
+                                🔄 Retry Chart
                             </button>
                         </div>
                     </div>
@@ -562,11 +584,75 @@
             loadData();
         }
 
+        // Retry individual chart
+        window.retryChart = async function(chartId) {
+            console.log(`🔄 Retrying chart: ${chartId}`);
+            showChartLoading(chartId);
+            
+            // Reset retry count for this chart
+            retryCount[chartId] = 0;
+            
+            try {
+                if (chartId === 'bitcoinChart') {
+                    await loadBitcoinData();
+                } else {
+                    await loadEconomicData(chartId);
+                }
+            } catch (error) {
+                console.error(`Failed to retry ${chartId}:`, error);
+                showDataError(chartId, error.message, 3);
+            }
+        }
+
+        // Load data for specific chart with retry logic
+        async function loadDataWithRetry(chartId, dataLoader, maxRetries = 3) {
+            if (!retryCount[chartId]) retryCount[chartId] = 0;
+            
+            showChartLoading(chartId);
+            
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    retryCount[chartId] = attempt;
+                    const data = await dataLoader();
+                    
+                    if (data && data.length > 0) {
+                        return data;
+                    } else {
+                        throw new Error('No data received');
+                    }
+                } catch (error) {
+                    console.log(`❌ Attempt ${attempt + 1}/${maxRetries} failed for ${chartId}:`, error.message);
+                    
+                    if (attempt < maxRetries - 1) {
+                        // Wait before retry (exponential backoff)
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                    } else {
+                        // Final attempt failed
+                        retryCount[chartId] = maxRetries;
+                        showDataError(chartId, error.message, maxRetries);
+                        throw error;
+                    }
+                }
+            }
+        }
+
         // Add global test function
         window.testAPIs = testAPIs;
 
         function createChart(canvasId, data, label, color) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
+            // Restore canvas element if it was replaced by loading/error state
+            const container = document.getElementById(canvasId)?.parentElement;
+            if (container && !document.getElementById(canvasId)) {
+                container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+            }
+            
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas ${canvasId} not found`);
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
             const isDark = document.documentElement.classList.contains('dark');
 
             // Destroy existing chart if it exists
@@ -705,7 +791,19 @@
         }
 
         function createDualAxisChart(canvasId, data1, data2, label1, label2, color1, color2) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
+            // Restore canvas element if it was replaced by loading/error state
+            const container = document.getElementById(canvasId)?.parentElement;
+            if (container && !document.getElementById(canvasId)) {
+                container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+            }
+            
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas ${canvasId} not found`);
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
             const isDark = document.documentElement.classList.contains('dark');
 
             // Destroy existing chart if it exists
@@ -940,6 +1038,13 @@
                 </div>
             `;
 
+            // Show loading animation for all charts
+            const chartIds = ['bitcoinChart', 'm2BitcoinChart', 'dxyBitcoinChart', 'pmiChart', 'nfciChart', 'm2Chart', 'tgaChart'];
+            chartIds.forEach(chartId => {
+                showChartLoading(chartId);
+                retryCount[chartId] = 0; // Reset retry counts
+            });
+
             const dataResults = {};
             const errors = [];
             let realDataCount = 0;
@@ -947,15 +1052,15 @@
             try {
                 console.log('Starting data fetch from real APIs...');
 
-                // Fetch Bitcoin data first (most reliable)
+                // Fetch Bitcoin data first (most reliable) with retry logic
                 try {
                     statusEl.innerHTML = `<p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">Fetching Bitcoin price data...</p>`;
-                    dataResults.bitcoin = await fetchBitcoinPrice();
+                    dataResults.bitcoin = await loadDataWithRetry('bitcoinChart', fetchBitcoinPrice);
                     realDataCount++;
                     console.log('✅ Bitcoin data loaded successfully');
                 } catch (error) {
                     errors.push(`Bitcoin: ${error.message}`);
-                    console.error('❌ Bitcoin data failed:', error);
+                    console.error('❌ Bitcoin data failed after retries:', error);
                 }
 
                 // Fetch FRED data series with timeout and retry
@@ -967,23 +1072,33 @@
                     { key: 'tga', id: 'WTREGEN', name: 'Treasury Account' }
                 ];
 
-                // Fetch FRED data with timeout
+                // Fetch FRED data with retry logic
                 const fredPromises = fredSeries.map(async (series) => {
+                    const chartIdMap = {
+                        'm2': 'm2Chart',
+                        'dxy': 'dxyBitcoinChart', 
+                        'pmi': 'pmiChart',
+                        'nfci': 'nfciChart',
+                        'tga': 'tgaChart'
+                    };
+                    
+                    const chartId = chartIdMap[series.key];
+                    
                     try {
                         statusEl.innerHTML = `<p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">Fetching ${series.name}...</p>`;
                         
-                        // Add timeout to prevent hanging
-                        const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Timeout')), 10000)
-                        );
-                        
-                        const dataPromise = fetchFRED(series.id);
-                        const data = await Promise.race([dataPromise, timeoutPromise]);
+                        const data = await loadDataWithRetry(chartId, () => {
+                            const timeoutPromise = new Promise((_, reject) => 
+                                setTimeout(() => reject(new Error('Timeout')), 10000)
+                            );
+                            const dataPromise = fetchFRED(series.id);
+                            return Promise.race([dataPromise, timeoutPromise]);
+                        });
                         
                         console.log(`✅ ${series.name} data loaded successfully`);
                         return { key: series.key, data, success: true };
                     } catch (error) {
-                        console.error(`❌ ${series.name} data failed:`, error.message);
+                        console.error(`❌ ${series.name} data failed after retries:`, error.message);
                         errors.push(`${series.name}: ${error.message}`);
                         return { key: series.key, data: null, success: false };
                     }
