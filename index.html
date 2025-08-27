@@ -112,13 +112,31 @@
                     </select>
                 </div>
             </div>
-            <div class="mt-4 flex gap-2">
+            
+            <!-- Cache Status -->
+            <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-600">
+                <h4 class="text-md font-medium mb-3 text-slate-900 dark:text-white">Data Cache Status</h4>
+                <div id="cacheStatus" class="text-sm text-slate-600 dark:text-slate-300 mb-3">
+                    Loading cache status...
+                </div>
+                <div class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                    📦 Cached data is refreshed automatically every 12 hours to minimize API calls and improve loading speed.
+                </div>
+            </div>
+            
+            <div class="mt-4 flex gap-2 flex-wrap">
                 <button id="applySettings"
                     class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">Apply
                     Settings</button>
                 <button id="refreshData"
                     class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">Refresh
                     Data</button>
+                <button id="clearCache"
+                    class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors">Clear
+                    Cache</button>
+                <button id="forceRefresh"
+                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">Force
+                    Refresh</button>
             </div>
         </div>
 
@@ -225,12 +243,118 @@
         let chartInstances = {};
         let chartData = {};
         let retryCount = {}; // Track retry attempts per chart
-        let dataCache = {}; // Cache successful API responses
+        
+        // Enhanced caching system
+        const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+        const CACHE_KEY_PREFIX = 'macro_dashboard_';
+        
         let settings = {
             dataPoints: 90, // 3 months of data (approximately)
             chartType: 'line',
             showFill: false
         };
+
+        // Caching functions
+        function getCachedData(key) {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY_PREFIX + key);
+                if (!cached) return null;
+                
+                const { data, timestamp } = JSON.parse(cached);
+                const now = Date.now();
+                
+                // Check if cache is still valid (within 12 hours)
+                if (now - timestamp < CACHE_DURATION) {
+                    console.log(`📦 Using cached data for ${key} (${Math.round((now - timestamp) / (60 * 60 * 1000))}h old)`);
+                    return data;
+                }
+                
+                // Cache expired, remove it
+                localStorage.removeItem(CACHE_KEY_PREFIX + key);
+                console.log(`🗑️ Cache expired for ${key}, removed`);
+                return null;
+            } catch (error) {
+                console.error(`❌ Error reading cache for ${key}:`, error);
+                return null;
+            }
+        }
+        
+        function setCachedData(key, data) {
+            try {
+                const cacheEntry = {
+                    data: data,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(CACHE_KEY_PREFIX + key, JSON.stringify(cacheEntry));
+                console.log(`💾 Cached data for ${key}`);
+            } catch (error) {
+                console.error(`❌ Error caching data for ${key}:`, error);
+                // If localStorage is full, clear old cache entries
+                if (error.name === 'QuotaExceededError') {
+                    clearOldCache();
+                    // Try again
+                    try {
+                        localStorage.setItem(CACHE_KEY_PREFIX + key, JSON.stringify(cacheEntry));
+                        console.log(`💾 Cached data for ${key} after cleanup`);
+                    } catch (retryError) {
+                        console.error(`❌ Still failed to cache ${key}:`, retryError);
+                    }
+                }
+            }
+        }
+        
+        function clearOldCache() {
+            console.log('🧹 Clearing old cache entries...');
+            const keysToRemove = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+                    try {
+                        const cached = JSON.parse(localStorage.getItem(key));
+                        const age = Date.now() - cached.timestamp;
+                        
+                        // Remove entries older than 24 hours
+                        if (age > 24 * 60 * 60 * 1000) {
+                            keysToRemove.push(key);
+                        }
+                    } catch (error) {
+                        // Invalid cache entry, remove it
+                        keysToRemove.push(key);
+                    }
+                }
+            }
+            
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`🗑️ Removed old cache: ${key}`);
+            });
+        }
+        
+        function getCacheStatus() {
+            const cacheInfo = {};
+            const now = Date.now();
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+                    try {
+                        const cached = JSON.parse(localStorage.getItem(key));
+                        const ageHours = Math.round((now - cached.timestamp) / (60 * 60 * 1000));
+                        const dataKey = key.replace(CACHE_KEY_PREFIX, '');
+                        cacheInfo[dataKey] = {
+                            age: ageHours,
+                            valid: ageHours < 12,
+                            size: cached.data?.length || 0
+                        };
+                    } catch (error) {
+                        // Invalid cache entry
+                    }
+                }
+            }
+            
+            return cacheInfo;
+        }
 
         // Dark mode functionality
         function initDarkMode() {
@@ -293,9 +417,12 @@
             const settingsPanel = document.getElementById('settingsPanel');
             const applySettings = document.getElementById('applySettings');
             const refreshData = document.getElementById('refreshData');
+            const clearCache = document.getElementById('clearCache');
+            const forceRefresh = document.getElementById('forceRefresh');
 
             settingsBtn.addEventListener('click', () => {
                 settingsPanel.classList.toggle('hidden');
+                updateCacheStatus(); // Update cache status when panel opens
             });
 
             applySettings.addEventListener('click', () => {
@@ -312,15 +439,66 @@
                 loadData();
                 settingsPanel.classList.add('hidden');
             });
+            
+            clearCache.addEventListener('click', () => {
+                // Clear all cached data
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+                        localStorage.removeItem(key);
+                    }
+                }
+                console.log('🗑️ All cache cleared');
+                updateCacheStatus();
+                
+                // Show confirmation
+                const statusEl = document.getElementById('status');
+                statusEl.innerHTML = '<p class="text-orange-700 dark:text-orange-300">🗑️ Cache cleared! Next data load will fetch fresh data.</p>';
+                statusEl.className = 'mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg';
+                statusEl.classList.remove('hidden');
+                setTimeout(() => statusEl.classList.add('hidden'), 3000);
+            });
+            
+            forceRefresh.addEventListener('click', () => {
+                // Clear cache and immediately reload data
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith(CACHE_KEY_PREFIX)) {
+                        localStorage.removeItem(key);
+                    }
+                }
+                console.log('🔄 Force refresh: cache cleared, loading fresh data');
+                loadData();
+                settingsPanel.classList.add('hidden');
+            });
+        }
+        
+        function updateCacheStatus() {
+            const cacheInfo = getCacheStatus();
+            const statusEl = document.getElementById('cacheStatus');
+            
+            if (Object.keys(cacheInfo).length === 0) {
+                statusEl.innerHTML = '❌ No cached data found';
+                return;
+            }
+            
+            let statusHTML = '';
+            Object.entries(cacheInfo).forEach(([key, info]) => {
+                const icon = info.valid ? '✅' : '⏰';
+                const ageText = info.age === 0 ? 'Just cached' : `${info.age}h old`;
+                const dataName = key.replace('fred_', '').replace('bitcoin_price', 'Bitcoin').toUpperCase();
+                statusHTML += `<div>${icon} ${dataName}: ${ageText} (${info.size} points)</div>`;
+            });
+            
+            statusEl.innerHTML = statusHTML;
         }
 
         async function fetchFRED(seriesId) {
-            // Check cache first (5 minute cache)
+            // Check persistent cache first (12 hour cache)
             const cacheKey = `fred_${seriesId}`;
-            const cached = dataCache[cacheKey];
-            if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
-                console.log(`📋 Using cached data for ${seriesId}`);
-                return cached.data;
+            const cachedData = getCachedData(cacheKey);
+            if (cachedData) {
+                return cachedData;
             }
             
             console.log(`🔍 Fetching FRED series: ${seriesId}`);
@@ -423,11 +601,8 @@
                     console.log(`📅 Date range: ${validData[0].date} to ${validData[validData.length - 1].date}`);
                     console.log(`📊 Value range: ${Math.min(...validData.map(d => d.value)).toFixed(2)} to ${Math.max(...validData.map(d => d.value)).toFixed(2)}`);
                     
-                    // Cache the successful result
-                    dataCache[cacheKey] = {
-                        data: validData,
-                        timestamp: Date.now()
-                    };
+                    // Cache the successful result persistently (12 hours)
+                    setCachedData(cacheKey, validData);
                     
                     return validData;
 
@@ -446,12 +621,11 @@
         }
 
         async function fetchBitcoinPrice() {
-            // Check cache first (2 minute cache for Bitcoin)
+            // Check persistent cache first (12 hour cache for Bitcoin)
             const cacheKey = 'bitcoin_price';
-            const cached = dataCache[cacheKey];
-            if (cached && Date.now() - cached.timestamp < 2 * 60 * 1000) {
-                console.log(`📋 Using cached Bitcoin data`);
-                return cached.data;
+            const cachedData = getCachedData(cacheKey);
+            if (cachedData) {
+                return cachedData;
             }
             
             const apis = [
@@ -505,11 +679,8 @@
 
                     console.log(`✅ Successfully fetched Bitcoin from ${api.name}: ${sortedData.length} data points`);
                     
-                    // Cache the successful result
-                    dataCache[cacheKey] = {
-                        data: sortedData,
-                        timestamp: Date.now()
-                    };
+                    // Cache the successful result persistently (12 hours)
+                    setCachedData(cacheKey, sortedData);
                     
                     return sortedData;
 
@@ -1105,14 +1276,29 @@
             const statusEl = document.getElementById('status');
             const isDark = document.documentElement.classList.contains('dark');
 
+            // Check cache status
+            const cacheInfo = getCacheStatus();
+            const cachedCount = Object.values(cacheInfo).filter(info => info.valid).length;
+            const totalSeries = 6; // Bitcoin + 5 FRED series
+            
             statusEl.classList.remove('hidden');
             statusEl.className = `mt-4 p-3 ${isDark ? 'bg-blue-900/20 border-blue-800 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'} border rounded-lg`;
-            statusEl.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">Loading REAL data from APIs...</p>
-                </div>
-            `;
+            
+            if (cachedCount > 0) {
+                statusEl.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">📦 Loading data (${cachedCount}/${totalSeries} from cache)...</p>
+                    </div>
+                `;
+            } else {
+                statusEl.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">🌐 Loading fresh data from APIs...</p>
+                    </div>
+                `;
+            }
 
             // Show loading animation for all charts
             const chartIds = ['bitcoinChart', 'm2BitcoinChart', 'dxyBitcoinChart', 'pmiChart', 'nfciChart', 'm2Chart', 'tgaChart'];
@@ -1254,26 +1440,30 @@
                     }
                 });
 
-                // Update status based on REAL DATA ONLY
-                if (realDataCount >= 5) {
-                    statusEl.innerHTML = `<p class="${isDark ? 'text-green-300' : 'text-green-700'}">✅ REAL DATA LOADED! (${realDataCount}/6 sources, ${chartsCreated} charts)</p>`;
-                    statusEl.className = `mt-4 p-3 ${isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'} border rounded-lg`;
-                } else if (realDataCount > 0) {
-                    statusEl.innerHTML = `<p class="${isDark ? 'text-yellow-300' : 'text-yellow-700'}">⚠️ PARTIAL REAL DATA (${realDataCount}/6 sources) - Some charts show errors</p>`;
-                    statusEl.className = `mt-4 p-3 ${isDark ? 'bg-yellow-900/20 border-yellow-800' : 'bg-yellow-50 border-yellow-200'} border rounded-lg`;
-                } else {
-                    statusEl.innerHTML = `<p class="${isDark ? 'text-red-300' : 'text-red-700'}">❌ ALL APIs FAILED - NO REAL DATA AVAILABLE</p>`;
-                    statusEl.className = `mt-4 p-3 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} border rounded-lg`;
-                }
+                // Wait a moment for charts to render, then update status
+                setTimeout(() => {
+                    // Update status based on REAL DATA AND CHARTS CREATED
+                    if (chartsCreated >= 5) {
+                        statusEl.innerHTML = `<p class="${isDark ? 'text-green-300' : 'text-green-700'}">✅ CHARTS LOADED! (${chartsCreated} charts from ${realDataCount}/6 sources)</p>`;
+                        statusEl.className = `mt-4 p-3 ${isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'} border rounded-lg`;
+                    } else if (chartsCreated > 0) {
+                        statusEl.innerHTML = `<p class="${isDark ? 'text-yellow-300' : 'text-yellow-700'}">⚠️ PARTIAL CHARTS (${chartsCreated} charts from ${realDataCount}/6 sources)</p>`;
+                        statusEl.className = `mt-4 p-3 ${isDark ? 'bg-yellow-900/20 border-yellow-800' : 'bg-yellow-50 border-yellow-200'} border rounded-lg`;
+                    } else {
+                        statusEl.innerHTML = `<p class="${isDark ? 'text-red-300' : 'text-red-700'}">❌ NO CHARTS LOADED - API FAILURES</p>`;
+                        statusEl.className = `mt-4 p-3 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} border rounded-lg`;
+                    }
+                    
+                    // Hide status after showing success
+                    setTimeout(() => {
+                        statusEl.classList.add('hidden');
+                    }, 4000);
+                }, 500); // Wait 500ms for charts to render
 
                 // Log errors for debugging
                 if (errors.length > 0) {
                     console.log('API Errors:', errors);
                 }
-
-                setTimeout(() => {
-                    statusEl.classList.add('hidden');
-                }, 6000);
 
             } catch (error) {
                 console.error('Critical error in loadData:', error);
