@@ -706,8 +706,8 @@
                 
                 // Show confirmation
                 const statusEl = document.getElementById('status');
-                statusEl.innerHTML = '<p class="text-orange-700 dark:text-orange-300">🗑️ Cache cleared! Next data load will fetch fresh data.</p>';
-                statusEl.className = 'mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg';
+                statusEl.innerHTML = '<p>🗑️ Cache cleared! Next data load will fetch fresh data.</p>';
+                statusEl.className = 'status-alert warning';
                 statusEl.classList.remove('hidden');
                 setTimeout(() => statusEl.classList.add('hidden'), 3000);
             });
@@ -1061,25 +1061,25 @@
         function createChart(canvasId, data, label, color) {
             // Store reference to container for this canvas
             const chartContainers = {
-                'bitcoinChart': 'Bitcoin Price (USD)',
-                'm2BitcoinChart': 'M2 vs Bitcoin YoY', 
-                'dxyBitcoinChart': 'DXY vs Bitcoin 3M',
-                'pmiChart': 'Industrial Production',
-                'nfciChart': 'Financial Conditions',
-                'm2Chart': 'M2 Money Supply',
-                'tgaChart': 'Treasury Account'
+                'bitcoinChart': '₿ Bitcoin Price (USD)',
+                'm2BitcoinChart': '📈 M2 vs Bitcoin YoY', 
+                'dxyBitcoinChart': '💵 DXY vs Bitcoin 3M',
+                'pmiChart': '🏭 Industrial Production',
+                'nfciChart': '📊 Financial Conditions',
+                'm2Chart': '💰 M2 Money Supply',
+                'tgaChart': '🏛️ Treasury Account'
             };
             
             // Find the canvas or restore it if it was replaced by loading/error state
             let canvas = document.getElementById(canvasId);
             
             if (!canvas) {
-                // Find the section with the matching title and restore the canvas
-                const sections = document.querySelectorAll('section');
-                for (const section of sections) {
-                    const title = section.querySelector('h2');
+                // Find the chart-card with the matching title and restore the canvas
+                const chartCards = document.querySelectorAll('.chart-card');
+                for (const card of chartCards) {
+                    const title = card.querySelector('h2');
                     if (title && title.textContent.includes(chartContainers[canvasId])) {
-                        const container = section.querySelector('.chart-container');
+                        const container = card.querySelector('.chart-container');
                         if (container) {
                             container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                             canvas = document.getElementById(canvasId);
@@ -1236,25 +1236,25 @@
         function createDualAxisChart(canvasId, data1, data2, label1, label2, color1, color2) {
             // Store reference to container for this canvas
             const chartContainers = {
-                'bitcoinChart': 'Bitcoin Price (USD)',
-                'm2BitcoinChart': 'M2 vs Bitcoin YoY', 
-                'dxyBitcoinChart': 'DXY vs Bitcoin 3M',
-                'pmiChart': 'Industrial Production',
-                'nfciChart': 'Financial Conditions',
-                'm2Chart': 'M2 Money Supply',
-                'tgaChart': 'Treasury Account'
+                'bitcoinChart': '₿ Bitcoin Price (USD)',
+                'm2BitcoinChart': '📈 M2 vs Bitcoin YoY', 
+                'dxyBitcoinChart': '💵 DXY vs Bitcoin 3M',
+                'pmiChart': '🏭 Industrial Production',
+                'nfciChart': '📊 Financial Conditions',
+                'm2Chart': '💰 M2 Money Supply',
+                'tgaChart': '🏛️ Treasury Account'
             };
             
             // Find the canvas or restore it if it was replaced by loading/error state
             let canvas = document.getElementById(canvasId);
             
             if (!canvas) {
-                // Find the section with the matching title and restore the canvas
-                const sections = document.querySelectorAll('section');
-                for (const section of sections) {
-                    const title = section.querySelector('h2');
+                // Find the chart-card with the matching title and restore the canvas
+                const chartCards = document.querySelectorAll('.chart-card');
+                for (const card of chartCards) {
+                    const title = card.querySelector('h2');
                     if (title && title.textContent.includes(chartContainers[canvasId])) {
-                        const container = section.querySelector('.chart-container');
+                        const container = card.querySelector('.chart-container');
                         if (container) {
                             container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                             canvas = document.getElementById(canvasId);
@@ -1494,7 +1494,7 @@
 
         async function loadData() {
             const statusEl = document.getElementById('status');
-            const isDark = document.documentElement.classList.contains('dark');
+            const isDark = document.body.classList.contains('dark');
 
             // Check cache status
             const cacheInfo = getCacheStatus();
@@ -1502,21 +1502,17 @@
             const totalSeries = 6; // Bitcoin + 5 FRED series
             
             statusEl.classList.remove('hidden');
-            statusEl.className = `mt-4 p-3 ${isDark ? 'bg-blue-900/20 border-blue-800 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'} border rounded-lg`;
+            statusEl.className = 'status-alert';
             
             if (cachedCount > 0) {
                 statusEl.innerHTML = `
-                    <div class="flex items-center space-x-2">
-                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                        <p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">📦 Loading data (${cachedCount}/${totalSeries} from cache)...</p>
-                    </div>
+                    <div class="spinner"></div>
+                    <p>📦 Loading data (${cachedCount}/${totalSeries} from cache)...</p>
                 `;
             } else {
                 statusEl.innerHTML = `
-                    <div class="flex items-center space-x-2">
-                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                        <p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">🌐 Loading fresh data from APIs...</p>
-                    </div>
+                    <div class="spinner"></div>
+                    <p>🌐 Loading fresh data from APIs...</p>
                 `;
             }
 
@@ -1597,10 +1593,8 @@
                     completedCount++;
                     const percentage = Math.round((completedCount / totalCount) * 100);
                     statusEl.innerHTML = `
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                            <p class="${isDark ? 'text-blue-300' : 'text-blue-700'}">⚡ Loading data... ${percentage}% (${completedCount}/${totalCount})</p>
-                        </div>
+                        <div class="spinner"></div>
+                        <p>⚡ Loading data... ${percentage}% (${completedCount}/${totalCount})</p>
                     `;
                 };
                 
@@ -1692,14 +1686,14 @@
                 setTimeout(() => {
                     // Update status based on REAL DATA AND CHARTS CREATED
                     if (chartsCreated >= 5) {
-                        statusEl.innerHTML = `<p class="${isDark ? 'text-green-300' : 'text-green-700'}">✅ CHARTS LOADED! (${chartsCreated} charts from ${realDataCount}/6 sources)</p>`;
-                        statusEl.className = `mt-4 p-3 ${isDark ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'} border rounded-lg`;
+                        statusEl.innerHTML = `<p>✅ CHARTS LOADED! (${chartsCreated} charts from ${realDataCount}/6 sources)</p>`;
+                        statusEl.className = 'status-alert success';
                     } else if (chartsCreated > 0) {
-                        statusEl.innerHTML = `<p class="${isDark ? 'text-yellow-300' : 'text-yellow-700'}">⚠️ PARTIAL CHARTS (${chartsCreated} charts from ${realDataCount}/6 sources)</p>`;
-                        statusEl.className = `mt-4 p-3 ${isDark ? 'bg-yellow-900/20 border-yellow-800' : 'bg-yellow-50 border-yellow-200'} border rounded-lg`;
+                        statusEl.innerHTML = `<p>⚠️ PARTIAL CHARTS (${chartsCreated} charts from ${realDataCount}/6 sources)</p>`;
+                        statusEl.className = 'status-alert warning';
                     } else {
-                        statusEl.innerHTML = `<p class="${isDark ? 'text-red-300' : 'text-red-700'}">❌ NO CHARTS LOADED - API FAILURES</p>`;
-                        statusEl.className = `mt-4 p-3 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} border rounded-lg`;
+                        statusEl.innerHTML = `<p>❌ NO CHARTS LOADED - API FAILURES</p>`;
+                        statusEl.className = 'status-alert error';
                     }
                     
                     // Hide status after showing success
@@ -1715,8 +1709,8 @@
 
             } catch (error) {
                 console.error('Critical error in loadData:', error);
-                statusEl.innerHTML = `<p class="${isDark ? 'text-red-300' : 'text-red-700'}">❌ CRITICAL ERROR - NO REAL DATA AVAILABLE</p>`;
-                statusEl.className = `mt-4 p-3 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} border rounded-lg`;
+                statusEl.innerHTML = `<p>❌ CRITICAL ERROR - NO REAL DATA AVAILABLE</p>`;
+                statusEl.className = 'status-alert error';
                 
                 // Show error messages for all charts
                 ['bitcoinChart', 'm2BitcoinChart', 'dxyBitcoinChart', 'pmiChart', 'nfciChart', 'm2Chart', 'tgaChart'].forEach(chartId => {
