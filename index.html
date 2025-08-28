@@ -591,7 +591,7 @@
             <!-- Row 3: M2 Money Supply + Treasury Account -->
             <div class="charts-row">
                 <div class="chart-card">
-                    <h2 class="chart-title">💰 M2 YoY% vs Bitcoin YoY%</h2>
+                    <h2 class="chart-title">💰 M2 Money Supply</h2>
                     <div class="chart-container">
                         <canvas id="m2Chart"></canvas>
                     </div>
@@ -1203,7 +1203,7 @@
                 'dxyBitcoinChart': '💵 DXY vs Bitcoin 3M',
                 'pmiChart': '🏭 Industrial Production vs Bitcoin 3M%',
                 'nfciChart': '📊 Financial Conditions vs Bitcoin 3M%',
-                'm2Chart': '💰 M2 YoY% vs Bitcoin YoY%',
+                'm2Chart': '💰 M2 Money Supply',
                 'tgaChart': '🏛️ Treasury Account 3M% vs Bitcoin 3M%'
             };
 
@@ -1366,7 +1366,7 @@
                 'dxyBitcoinChart': '💵 DXY vs Bitcoin 3M',
                 'pmiChart': '🏭 Industrial Production vs Bitcoin 3M%',
                 'nfciChart': '📊 Financial Conditions vs Bitcoin 3M%',
-                'm2Chart': '💰 M2 YoY% vs Bitcoin YoY%',
+                'm2Chart': '💰 M2 Money Supply',
                 'tgaChart': '🏛️ Treasury Account 3M% vs Bitcoin 3M%'
             };
 
@@ -1565,14 +1565,7 @@
                 return { status: 'neutral', reason: 'Mixed financial signals' };
             }
 
-            if (canvasId === 'm2Chart') {
-                // M2 YoY% vs Bitcoin YoY%
-                if (latest1 > 8 && latest2 > 20) return { status: 'good', reason: 'High M2 growth + Bitcoin gains' };
-                if (latest1 < 3 && latest2 < -10) return { status: 'bad', reason: 'Low M2 growth + Bitcoin decline' };
-                if (latest1 > 6) return { status: 'good', reason: 'Strong M2 growth' };
-                if (latest2 > 15) return { status: 'good', reason: 'Strong Bitcoin YoY gains' };
-                return { status: 'neutral', reason: 'Mixed liquidity signals' };
-            }
+
 
             if (canvasId === 'tgaChart') {
                 // TGA 3M% vs Bitcoin 3M%
@@ -1856,21 +1849,9 @@
                     if (chartData[chart.key] && chartData[chart.key].length > 0 && chartData.bitcoin && chartData.bitcoin.length > 0) {
                         // Create meaningful dual axis charts with proper scaling
                         if (chart.key === 'm2') {
-                            // M2 YoY% vs Bitcoin YoY%
-                            if (chartData.m2.length > 12 && chartData.bitcoin.length > 12) {
-                                const m2YoY = calculateYoYChange(chartData.m2);
-                                const bitcoinYoY = calculateYoYChange(chartData.bitcoin);
-                                if (m2YoY.length > 0 && bitcoinYoY.length > 0) {
-                                    createDualAxisChart(chart.id, m2YoY.slice(-settings.dataPoints), bitcoinYoY.slice(-settings.dataPoints), 'M2 YoY%', 'Bitcoin YoY%', chart.color, '#f7931a');
-                                    chartsCreated++;
-                                } else {
-                                    createChart(chart.id, chartData[chart.key].slice(-settings.dataPoints), chart.label, chart.color);
-                                    chartsCreated++;
-                                }
-                            } else {
-                                createChart(chart.id, chartData[chart.key].slice(-settings.dataPoints), chart.label, chart.color);
-                                chartsCreated++;
-                            }
+                            // M2 Money Supply - single chart
+                            createChart(chart.id, chartData[chart.key].slice(-settings.dataPoints), chart.label, chart.color);
+                            chartsCreated++;
                         } else if (chart.key === 'tga') {
                             // TGA 3M% vs Bitcoin 3M%
                             if (chartData.tga.length > 3 && chartData.bitcoin.length > 3) {
