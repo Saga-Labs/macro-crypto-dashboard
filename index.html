@@ -1640,8 +1640,26 @@
                 if (chartData.m2 && chartData.bitcoin && chartData.m2.length > 12 && chartData.bitcoin.length > 12) {
                     const m2YoY = calculateYoYChange(chartData.m2);
                     const bitcoinYoY = calculateYoYChange(chartData.bitcoin);
+                    
+                    // Debug: Log the data ranges to see if it's real
+                    console.log('📊 M2 YoY Data Range:', {
+                        count: m2YoY.length,
+                        min: Math.min(...m2YoY.map(d => d.value)).toFixed(2),
+                        max: Math.max(...m2YoY.map(d => d.value)).toFixed(2),
+                        latest: m2YoY[m2YoY.length - 1]?.value.toFixed(2),
+                        sample: m2YoY.slice(-5).map(d => `${d.date}: ${d.value.toFixed(1)}%`)
+                    });
+                    
+                    console.log('📊 Bitcoin YoY Data Range:', {
+                        count: bitcoinYoY.length,
+                        min: Math.min(...bitcoinYoY.map(d => d.value)).toFixed(2),
+                        max: Math.max(...bitcoinYoY.map(d => d.value)).toFixed(2),
+                        latest: bitcoinYoY[bitcoinYoY.length - 1]?.value.toFixed(2),
+                        sample: bitcoinYoY.slice(-5).map(d => `${d.date}: ${d.value.toFixed(1)}%`)
+                    });
+                    
                     if (m2YoY.length > 0 && bitcoinYoY.length > 0) {
-                        createDualAxisChart('m2BitcoinChart', m2YoY, bitcoinYoY, 'Global M2 YoY%', 'Bitcoin YoY%', '#2563eb', '#f59e0b');
+                        createDualAxisChart('m2BitcoinChart', m2YoY, bitcoinYoY, 'M2 YoY%', 'Bitcoin YoY%', '#2563eb', '#f59e0b');
                         chartsCreated++;
                     } else {
                         showDataError('m2BitcoinChart', 'Insufficient data for YoY calculations');
