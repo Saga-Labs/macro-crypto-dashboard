@@ -962,10 +962,10 @@
             const isDark = document.documentElement.classList.contains('dark');
             
             container.innerHTML = `
-                <div class="h-full flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'} rounded-lg">
-                    <div class="text-center">
-                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 ${isDark ? 'border-blue-400' : 'border-blue-600'} mx-auto mb-2"></div>
-                        <div class="${isDark ? 'text-slate-300' : 'text-slate-600'} text-sm">Loading data...</div>
+                <div style="height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border-radius: 10px;">
+                    <div style="text-align: center;">
+                        <div class="spinner" style="margin: 0 auto 10px;"></div>
+                        <div style="color: rgba(255,255,255,0.8); font-size: 14px;">Loading data...</div>
                     </div>
                 </div>
             `;
@@ -976,7 +976,7 @@
             if (!canvas) return;
             
             const container = canvas.parentElement;
-            const isDark = document.documentElement.classList.contains('dark');
+            const isDark = document.body.classList.contains('dark');
             
             // Only show error after 3 failed attempts
             if (retryCount < 3) {
@@ -985,15 +985,13 @@
             
             // Replace canvas with error message
             container.innerHTML = `
-                <div class="h-full flex items-center justify-center ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} border-2 rounded-lg">
-                    <div class="text-center p-4">
-                        <div class="${isDark ? 'text-red-400' : 'text-red-600'} text-lg font-medium mb-2">❌ Data Unavailable</div>
-                        <div class="${isDark ? 'text-red-300' : 'text-red-500'} text-sm mb-3">${errorMessage}</div>
-                        <div class="space-y-2">
-                            <button onclick="retryChart('${chartId}')" class="block w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm">
-                                🔄 Retry Chart
-                            </button>
-                        </div>
+                <div style="height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px;">
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="color: #ef4444; font-size: 16px; font-weight: 600; margin-bottom: 8px;">❌ Data Unavailable</div>
+                        <div style="color: rgba(239, 68, 68, 0.8); font-size: 14px; margin-bottom: 12px;">${errorMessage}</div>
+                        <button onclick="retryChart('${chartId}')" class="btn" style="background: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.5);">
+                            🔄 Retry Chart
+                        </button>
                     </div>
                 </div>
             `;
@@ -1081,7 +1079,7 @@
                 for (const section of sections) {
                     const title = section.querySelector('h2');
                     if (title && title.textContent.includes(chartContainers[canvasId])) {
-                        const container = section.querySelector('.h-48.mb-2');
+                        const container = section.querySelector('.chart-container');
                         if (container) {
                             container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                             canvas = document.getElementById(canvasId);
@@ -1256,7 +1254,7 @@
                 for (const section of sections) {
                     const title = section.querySelector('h2');
                     if (title && title.textContent.includes(chartContainers[canvasId])) {
-                        const container = section.querySelector('.h-48.mb-2');
+                        const container = section.querySelector('.chart-container');
                         if (container) {
                             container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
                             canvas = document.getElementById(canvasId);
